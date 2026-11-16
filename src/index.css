@@ -1,0 +1,169 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --az-black: #050505;
+    --az-obsidian: #0b0b0e;
+    --az-surface: #121216;
+    --az-surface-elevated: #18181d;
+    --az-gold: #d4af37;
+    --az-gold-bright: #e6c65b;
+    --az-gold-muted: #9a7e24;
+    --az-white: #f5f5f0;
+    --az-muted: #9ca3af;
+    --font-display: "Cormorant Garamond", "Cairo", Georgia, serif;
+    --font-arabic: "Cairo", "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-sans: "Plus Jakarta Sans", "Cairo", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+  }
+
+  html {
+    background-color: #050505;
+    color: #f5f5f0;
+    font-family: var(--font-arabic);
+    scroll-behavior: smooth;
+  }
+
+  html[dir="ltr"] {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: #050505;
+    color: #f5f5f0;
+    overflow-x: hidden;
+  }
+}
+
+.font-cinema-display {
+  font-family: var(--font-display);
+}
+
+.font-cinema-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom minimal dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.28);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.55);
+}
+
+@keyframes az-ambient-gold-flicker {
+  0% {
+    opacity: 0.14;
+    transform: scale(0.97);
+  }
+  18% {
+    opacity: 0.78;
+    transform: scale(1.01);
+  }
+  35% {
+    opacity: 0.42;
+    transform: scale(0.99);
+  }
+  56% {
+    opacity: 0.98;
+    transform: scale(1.03);
+  }
+  74% {
+    opacity: 0.58;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes az-sconce-warm-pulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scaleY(0.96);
+  }
+  32% {
+    opacity: 0.95;
+    transform: scaleY(1.03);
+  }
+  64% {
+    opacity: 0.42;
+    transform: scaleY(0.94);
+  }
+}
+
+.az-ambient-gold-flicker {
+  animation: az-ambient-gold-flicker 1.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.az-sconce-warm-pulse {
+  animation: az-sconce-warm-pulse 1.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes az-seat-spark-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.55);
+  }
+  18% {
+    opacity: 0.95;
+    transform: translate3d(4px, -28px, 0) scale(1.1);
+  }
+  70% {
+    opacity: 0.72;
+    transform: translate3d(-8px, -130px, 0) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(6px, -220px, 0) scale(0.35);
+  }
+}
+
+@keyframes az-shockwave-ring {
+  0% {
+    opacity: 0.65;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+.az-seat-spark-rise {
+  animation: az-seat-spark-rise 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.az-shockwave-ring {
+  animation: az-shockwave-ring 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

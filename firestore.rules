@@ -1,0 +1,609 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'az1606276@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin();
+    }
+
+    // Validation helpers
+    function isValidFilm(data) {
+      return data.keys().hasAll([
+          'id', 'titleAr', 'titleEn', 'year', 'genre', 'status',
+          'isOriginal', 'isFeatured', 'isVisible', 'sortOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'titleAr', 'titleEn', 'year', 'releaseDate', 'genre', 'duration', 'durationSeconds',
+          'status', 'isOriginal', 'isFeatured', 'isVisible', 'sortOrder',
+          'synopsisAr', 'synopsisEn', 'director', 'producers', 'cast',
+          'posterUrl', 'backdropUrl', 'stillUrls', 'trailerUrl', 'videoUrl', 'videoQualities',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 200
+        && data.titleEn is string && data.titleEn.size() >= 1 && data.titleEn.size() <= 200
+        && data.year is int && data.year >= 1900 && data.year <= 2100
+        && (!('releaseDate' in data) || (data.releaseDate is string && data.releaseDate.size() <= 64))
+        && data.genre in ['military', 'historical', 'drama', 'action', 'thriller', 'other']
+        && (!('duration' in data) || (data.duration is string && data.duration.size() <= 40))
+        && (!('durationSeconds' in data) || (data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 86400))
+        && data.status in ['released', 'coming_soon', 'post_production']
+        && data.isOriginal is bool
+        && data.isFeatured is bool
+        && data.isVisible is bool
+        && data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 100000
+        && (!('synopsisAr' in data) || (data.synopsisAr is string && data.synopsisAr.size() <= 4000))
+        && (!('synopsisEn' in data) || (data.synopsisEn is string && data.synopsisEn.size() <= 4000))
+        && (!('director' in data) || (data.director is string && data.director.size() <= 200))
+        && (!('producers' in data) || (data.producers is string && data.producers.size() <= 400))
+        && (!('cast' in data) || (data.cast is list && data.cast.size() <= 30 && (data.cast.size() == 0 || data.cast[0] is map)))
+        && (!('posterUrl' in data) || (data.posterUrl is string && data.posterUrl.size() <= 350000))
+        && (!('backdropUrl' in data) || (data.backdropUrl is string && data.backdropUrl.size() <= 350000))
+        && (!('stillUrls' in data) || (data.stillUrls is list && data.stillUrls.size() <= 12 && (data.stillUrls.size() == 0 || data.stillUrls[0] is string)))
+        && (!('trailerUrl' in data) || (data.trailerUrl is string && data.trailerUrl.size() <= 4000))
+        && (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 4000))
+        && (!('videoQualities' in data) || (data.videoQualities is list && data.videoQualities.size() <= 6 && (data.videoQualities.size() == 0 || data.videoQualities[0] is map)))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 320
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.role in ['admin', 'viewer']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 320
+        && isValidId(data.grantedBy)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWatchlistItem(data) {
+      return data.keys().hasAll(['filmId', 'userId', 'addedAt'])
+        && data.keys().hasOnly(['filmId', 'userId', 'addedAt'])
+        && isValidId(data.filmId)
+        && isValidId(data.userId)
+        && data.addedAt is timestamp;
+    }
+
+    function isValidAnalyticsSession(data) {
+      return data.keys().hasAll(['visitorId', 'visitCount', 'firstSeenAt', 'lastActiveAt', 'updatedAt'])
+        && data.keys().hasOnly(['visitorId', 'visitCount', 'firstSeenAt', 'lastActiveAt', 'lastPath', 'updatedAt'])
+        && isValidId(data.visitorId)
+        && data.visitCount is int && data.visitCount >= 1 && data.visitCount <= 100000
+        && data.firstSeenAt is timestamp
+        && data.lastActiveAt is timestamp
+        && (!('lastPath' in data) || (data.lastPath is string && data.lastPath.size() <= 200))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAnalyticsVisit(data) {
+      return data.keys().hasAll(['visitId', 'visitorId', 'isReturning', 'dateKey', 'createdAt'])
+        && data.keys().hasOnly(['visitId', 'visitorId', 'isReturning', 'dateKey', 'createdAt'])
+        && isValidId(data.visitId)
+        && isValidId(data.visitorId)
+        && data.isReturning is bool
+        && data.dateKey is string && data.dateKey.size() == 10 && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAnalyticsView(data) {
+      return data.keys().hasAll(['viewId', 'filmId', 'visitorId', 'dateKey', 'watchedSeconds', 'completed', 'startedAt', 'updatedAt'])
+        && data.keys().hasOnly(['viewId', 'filmId', 'visitorId', 'dateKey', 'watchedSeconds', 'durationSeconds', 'completed', 'startedAt', 'completedAt', 'updatedAt'])
+        && isValidId(data.viewId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.dateKey is string && data.dateKey.size() == 10 && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.watchedSeconds is number && data.watchedSeconds >= 0 && data.watchedSeconds <= 86400
+        && (!('durationSeconds' in data) || (data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 86400))
+        && data.completed is bool
+        && data.startedAt is timestamp
+        && (!('completedAt' in data) || data.completedAt is timestamp)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll([
+          'accessMode', 'statusTitleAr', 'statusTitleEn', 'statusMessageAr', 'statusMessageEn',
+          'announcementEnabled', 'announcementAr', 'announcementEn', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'accessMode', 'statusTitleAr', 'statusTitleEn', 'statusMessageAr', 'statusMessageEn',
+          'announcementEnabled', 'announcementAr', 'announcementEn', 'instagramUrl',
+          'onlyShowReadyFilms', 'countdownEnabled', 'countdownTargetIso',
+          'countdownTitleAr', 'countdownTitleEn',
+          'pollEnabled', 'pollId', 'pollQuestionAr', 'pollQuestionEn',
+          'pollOptionAAr', 'pollOptionAEn', 'pollOptionBAr', 'pollOptionBEn',
+          'updatedAt'
+        ])
+        && data.accessMode in ['open', 'maintenance', 'closed']
+        && data.statusTitleAr is string && data.statusTitleAr.size() <= 140
+        && data.statusTitleEn is string && data.statusTitleEn.size() <= 140
+        && data.statusMessageAr is string && data.statusMessageAr.size() <= 1000
+        && data.statusMessageEn is string && data.statusMessageEn.size() <= 1000
+        && data.announcementEnabled is bool
+        && data.announcementAr is string && data.announcementAr.size() <= 240
+        && data.announcementEn is string && data.announcementEn.size() <= 240
+        && (!('instagramUrl' in data) || (data.instagramUrl is string && data.instagramUrl.size() <= 300))
+        && (!('onlyShowReadyFilms' in data) || data.onlyShowReadyFilms is bool)
+        && (!('countdownEnabled' in data) || data.countdownEnabled is bool)
+        && (!('countdownTargetIso' in data) || (data.countdownTargetIso is string && data.countdownTargetIso.size() <= 40))
+        && (!('countdownTitleAr' in data) || (data.countdownTitleAr is string && data.countdownTitleAr.size() <= 140))
+        && (!('countdownTitleEn' in data) || (data.countdownTitleEn is string && data.countdownTitleEn.size() <= 140))
+        && (!('pollEnabled' in data) || data.pollEnabled is bool)
+        && (!('pollId' in data) || (data.pollId is string && data.pollId.size() >= 1 && data.pollId.size() <= 64 && data.pollId.matches('^[a-zA-Z0-9_\\-]+$')))
+        && (!('pollQuestionAr' in data) || (data.pollQuestionAr is string && data.pollQuestionAr.size() <= 180))
+        && (!('pollQuestionEn' in data) || (data.pollQuestionEn is string && data.pollQuestionEn.size() <= 180))
+        && (!('pollOptionAAr' in data) || (data.pollOptionAAr is string && data.pollOptionAAr.size() <= 120))
+        && (!('pollOptionAEn' in data) || (data.pollOptionAEn is string && data.pollOptionAEn.size() <= 120))
+        && (!('pollOptionBAr' in data) || (data.pollOptionBAr is string && data.pollOptionBAr.size() <= 120))
+        && (!('pollOptionBEn' in data) || (data.pollOptionBEn is string && data.pollOptionBEn.size() <= 120))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFilmReaction(data) {
+      return data.keys().hasAll(['reactionId', 'filmId', 'visitorId', 'createdAt'])
+        && data.keys().hasOnly(['reactionId', 'filmId', 'visitorId', 'createdAt'])
+        && isValidId(data.reactionId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFilmComment(data) {
+      return data.keys().hasAll(['commentId', 'filmId', 'visitorId', 'authorName', 'text', 'createdAt'])
+        && data.keys().hasOnly(['commentId', 'filmId', 'visitorId', 'authorName', 'text', 'createdAt'])
+        && isValidId(data.commentId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 600
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPollVote(data) {
+      return data.keys().hasAll(['voteId', 'pollId', 'visitorId', 'option', 'createdAt'])
+        && data.keys().hasOnly(['voteId', 'pollId', 'visitorId', 'option', 'createdAt'])
+        && isValidId(data.voteId)
+        && isValidId(data.pollId) && data.pollId.size() <= 64
+        && isValidId(data.visitorId)
+        && data.option in ['A', 'B']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFilmPresence(data) {
+      return data.keys().hasAll(['presenceId', 'filmId', 'visitorId', 'isActive', 'updatedAt'])
+        && data.keys().hasOnly(['presenceId', 'filmId', 'visitorId', 'isActive', 'updatedAt'])
+        && isValidId(data.presenceId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.isActive is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFilmPulse(data) {
+      return data.keys().hasAll(['pulseId', 'filmId', 'visitorId', 'kind', 'timeSec', 'durationSec', 'createdAt'])
+        && data.keys().hasOnly(['pulseId', 'filmId', 'visitorId', 'kind', 'timeSec', 'durationSec', 'createdAt'])
+        && isValidId(data.pulseId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.kind in ['fire', 'shock', 'heart']
+        && data.timeSec is number && data.timeSec >= 0 && data.timeSec <= 86400
+        && data.durationSec is number && data.durationSec >= 0 && data.durationSec <= 86400
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWatchParty(data) {
+      return data.keys().hasAll([
+          'partyId', 'filmId', 'hostVisitorId', 'hostName',
+          'isPlaying', 'playbackTime', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'partyId', 'filmId', 'hostVisitorId', 'hostName',
+          'isPlaying', 'playbackTime', 'isActive', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.partyId) && data.partyId.size() >= 4 && data.partyId.size() <= 32
+        && isValidId(data.filmId)
+        && isValidId(data.hostVisitorId)
+        && data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 60
+        && data.isPlaying is bool
+        && data.playbackTime is number && data.playbackTime >= 0 && data.playbackTime <= 86400
+        && data.isActive is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWatchPartyMessage(data) {
+      return data.keys().hasAll([
+          'messageId', 'partyId', 'visitorId', 'authorName', 'text', 'filmTimeSec', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'messageId', 'partyId', 'visitorId', 'authorName', 'text', 'filmTimeSec', 'createdAt'
+        ])
+        && isValidId(data.messageId)
+        && isValidId(data.partyId) && data.partyId.size() >= 4 && data.partyId.size() <= 32
+        && isValidId(data.visitorId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 300
+        && data.filmTimeSec is number && data.filmTimeSec >= 0 && data.filmTimeSec <= 86400
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSceneNote(data) {
+      return data.keys().hasAll([
+          'noteId', 'filmId', 'visitorId', 'authorName', 'text', 'timeSec', 'isDirectorNote', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'noteId', 'filmId', 'visitorId', 'authorName', 'text', 'timeSec', 'isDirectorNote', 'createdAt'
+        ])
+        && isValidId(data.noteId)
+        && isValidId(data.filmId)
+        && isValidId(data.visitorId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 280
+        && data.timeSec is number && data.timeSec >= 0 && data.timeSec <= 86400
+        && data.isDirectorNote is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSeatBooking(data) {
+      return data.keys().hasAll([
+          'bookingId', 'filmId', 'seatCode', 'tier', 'visitorId', 'viewerName', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'bookingId', 'filmId', 'seatCode', 'tier', 'visitorId', 'viewerName', 'createdAt'
+        ])
+        && isValidId(data.bookingId) && data.bookingId.size() >= 3 && data.bookingId.size() <= 140
+        && isValidId(data.filmId)
+        && data.seatCode is string && data.seatCode.size() >= 2 && data.seatCode.size() <= 4
+        && data.seatCode.matches('^[A-E](?:[1-9]|10)$')
+        && data.tier in ['front', 'sweet_spot', 'vip']
+        && isValidId(data.visitorId)
+        && data.viewerName is string && data.viewerName.size() >= 1 && data.viewerName.size() <= 60
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAzTechOrder(data) {
+      return data.keys().hasAll([
+          'orderId', 'actionType', 'requestNote', 'resolutionNote',
+          'status', 'checkedLinks', 'updatedLinks', 'latencyMs', 'createdByEmail', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'orderId', 'actionType', 'targetFilmId', 'requestNote', 'resolutionNote',
+          'status', 'checkedLinks', 'updatedLinks', 'latencyMs', 'createdByEmail', 'createdAt'
+        ])
+        && isValidId(data.orderId)
+        && data.actionType in ['link_update', 'batch_repair', 'maintenance_mode', 'cache_sync']
+        && (!('targetFilmId' in data) || (data.targetFilmId is string && data.targetFilmId.size() <= 128))
+        && data.requestNote is string && data.requestNote.size() >= 1 && data.requestNote.size() <= 500
+        && data.resolutionNote is string && data.resolutionNote.size() >= 1 && data.resolutionNote.size() <= 800
+        && data.status in ['resolved', 'warning']
+        && data.checkedLinks is int && data.checkedLinks >= 0 && data.checkedLinks <= 500
+        && data.updatedLinks is int && data.updatedLinks >= 0 && data.updatedLinks <= 500
+        && data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 60000
+        && data.createdByEmail is string && data.createdByEmail.size() >= 3 && data.createdByEmail.size() <= 320
+        && data.createdAt is timestamp;
+    }
+
+    // Films collection
+    match /films/{filmId} {
+      allow get: if isValidId(filmId) && (existing().isVisible == true || isAdmin());
+      allow list: if existing().isVisible == true || isAdmin();
+      allow create: if isAdmin() && isValidId(filmId) && isValidFilm(incoming())
+        && incoming().id == filmId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(filmId) && isValidFilm(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(filmId);
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && ((isSignedIn() && request.auth.uid == userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerified() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().uid == userId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().role == 'viewer' || isBootstrappedAdmin());
+      allow update: if isVerified() && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            request.auth.uid == userId
+            && incoming().role == existing().role
+            && incoming().email == existing().email
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+
+      match /watchlist/{filmId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(filmId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+        allow create: if isVerified() && isValidId(userId) && isValidId(filmId)
+          && request.auth.uid == userId
+          && isValidWatchlistItem(incoming())
+          && incoming().userId == userId
+          && incoming().filmId == filmId
+          && incoming().addedAt == request.time
+          && exists(/databases/$(database)/documents/films/$(filmId));
+        allow update: if false;
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(filmId) && request.auth.uid == userId;
+      }
+    }
+
+    // Admins registry
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && ((isSignedIn() && request.auth.uid == userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(userId) && isValidAdminRecord(incoming())
+        && incoming().uid == userId
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(userId) && isValidAdminRecord(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // Analytics sessions (anonymous write, admin read)
+    match /analytics_sessions/{visitorId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(visitorId) && isValidAnalyticsSession(incoming())
+        && incoming().visitorId == visitorId
+        && incoming().visitCount == 1
+        && incoming().firstSeenAt == request.time
+        && incoming().lastActiveAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(visitorId) && isValidAnalyticsSession(incoming())
+        && incoming().visitorId == existing().visitorId
+        && incoming().firstSeenAt == existing().firstSeenAt
+        && incoming().lastActiveAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().visitCount >= existing().visitCount
+        && incoming().visitCount <= existing().visitCount + 1
+        && incoming().diff(existing()).affectedKeys().hasOnly(['visitCount', 'lastActiveAt', 'lastPath', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(visitorId);
+    }
+
+    // Analytics visits (anonymous immutable create, admin read)
+    match /analytics_visits/{visitId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(visitId) && isValidAnalyticsVisit(incoming())
+        && incoming().visitId == visitId
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Analytics views (anonymous playback create/update, admin read)
+    match /analytics_views/{viewId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(viewId) && isValidAnalyticsView(incoming())
+        && incoming().viewId == viewId
+        && incoming().startedAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if isValidId(viewId) && isValidAnalyticsView(incoming())
+        && incoming().viewId == existing().viewId
+        && incoming().filmId == existing().filmId
+        && incoming().visitorId == existing().visitorId
+        && incoming().dateKey == existing().dateKey
+        && incoming().startedAt == existing().startedAt
+        && incoming().updatedAt == request.time
+        && incoming().watchedSeconds >= existing().watchedSeconds
+        && (existing().completed == false || incoming().completed == true)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['watchedSeconds', 'durationSeconds', 'completed', 'completedAt', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(viewId);
+    }
+
+    // Site Settings (public single-doc get, owner-only write)
+    match /site_settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if false;
+      allow create: if isAdmin() && isValidId(settingId) && isValidSiteSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(settingId) && isValidSiteSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Film Reactions (public read per filmId, immutable visitor like with film existence guard)
+    match /film_reactions/{reactionId} {
+      allow get: if isValidId(reactionId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(reactionId) && isValidFilmReaction(incoming())
+        && incoming().reactionId == reactionId
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(reactionId);
+    }
+
+    // Film Comments (public read per filmId, immutable create, owner moderation delete)
+    match /film_comments/{commentId} {
+      allow get: if isValidId(commentId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(commentId) && isValidFilmComment(incoming())
+        && incoming().commentId == commentId
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(commentId);
+    }
+
+    // Audience Greenlight Poll Votes (public read per pollId, immutable single vote per visitor, admin delete)
+    match /poll_votes/{voteId} {
+      allow get: if isValidId(voteId);
+      allow list: if resource.data.pollId is string
+        && resource.data.pollId.size() >= 1
+        && resource.data.pollId.size() <= 64;
+      allow create: if isValidId(voteId) && isValidPollVote(incoming())
+        && incoming().voteId == voteId
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(voteId);
+    }
+
+    // Live Film Viewer Presence (public count per filmId, single-visitor heartbeat)
+    match /film_presence/{presenceId} {
+      allow get: if isValidId(presenceId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(presenceId) && isValidFilmPresence(incoming())
+        && incoming().presenceId == presenceId
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if isValidId(presenceId) && isValidFilmPresence(incoming())
+        && incoming().presenceId == existing().presenceId
+        && incoming().filmId == existing().filmId
+        && incoming().visitorId == existing().visitorId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['isActive', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(presenceId);
+    }
+
+    // Film Emotional Heartbeat Pulses (public read per filmId, immutable create)
+    match /film_pulses/{pulseId} {
+      allow get: if isValidId(pulseId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(pulseId) && isValidFilmPulse(incoming())
+        && incoming().pulseId == pulseId
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(pulseId);
+    }
+
+    // Synchronized Cinema Watch Party Rooms (direct room-code lookup only, no scraping list)
+    match /watch_parties/{partyId} {
+      allow get: if isValidId(partyId);
+      allow list: if false;
+      allow create: if isValidId(partyId) && isValidWatchParty(incoming())
+        && incoming().partyId == partyId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if isValidId(partyId) && isValidWatchParty(incoming())
+        && (existing().isActive == true || isAdmin())
+        && incoming().partyId == existing().partyId
+        && incoming().filmId == existing().filmId
+        && incoming().hostVisitorId == existing().hostVisitorId
+        && incoming().hostName == existing().hostName
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['isPlaying', 'playbackTime', 'isActive', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(partyId);
+
+      match /messages/{messageId} {
+        allow get: if isValidId(partyId) && isValidId(messageId)
+          && exists(/databases/$(database)/documents/watch_parties/$(partyId));
+        allow list: if resource.data.partyId == partyId;
+        allow create: if isValidId(partyId) && isValidId(messageId)
+          && isValidWatchPartyMessage(incoming())
+          && incoming().messageId == messageId
+          && incoming().partyId == partyId
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/watch_parties/$(partyId))
+          && get(/databases/$(database)/documents/watch_parties/$(partyId)).data.isActive == true;
+        allow update: if false;
+        allow delete: if isAdmin() && isValidId(partyId) && isValidId(messageId);
+      }
+    }
+
+    // Timecode-Synced Scene Notes (Director insights & audience timestamp notes)
+    match /scene_notes/{noteId} {
+      allow get: if isValidId(noteId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(noteId) && isValidSceneNote(incoming())
+        && incoming().noteId == noteId
+        && incoming().createdAt == request.time
+        && (incoming().isDirectorNote == false || isAdmin())
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(noteId);
+    }
+
+    // Auditorium Seat Bookings (composite filmId__seatCode key enforces atomic single reservation per seat)
+    match /seat_bookings/{bookingId} {
+      allow get: if isValidId(bookingId);
+      allow list: if resource.data.filmId is string
+        && resource.data.filmId.size() >= 1
+        && resource.data.filmId.size() <= 128;
+      allow create: if isValidId(bookingId) && isValidSeatBooking(incoming())
+        && incoming().bookingId == bookingId
+        && bookingId == (incoming().filmId + '__' + incoming().seatCode)
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/films/$(incoming().filmId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(bookingId);
+    }
+
+    // Admin-only AZ Technical Center instant maintenance & link update commands
+    match /az_tech_orders/{orderId} {
+      allow get: if isAdmin() && isValidId(orderId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(orderId) && isValidAzTechOrder(incoming())
+        && incoming().orderId == orderId
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+  }
+}

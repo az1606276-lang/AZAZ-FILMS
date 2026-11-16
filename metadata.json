@@ -1,0 +1,6 @@
+{
+  "name": "AZ FILMS",
+  "description": "A Private World of Cinema — منصة سينمائية خاصة لعرض وإدارة وإنتاج الأفلام السينمائية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

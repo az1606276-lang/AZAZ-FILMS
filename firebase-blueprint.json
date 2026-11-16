@@ -1,0 +1,396 @@
+{
+  "entities": {
+    "Film": {
+      "title": "Film",
+      "description": "A cinema work in the AZ FILMS library",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "titleAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "titleEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "year": { "type": "number" },
+        "releaseDate": { "type": "string", "maxLength": 64 },
+        "genre": { "type": "string", "enum": ["military", "historical", "drama", "action", "thriller", "other"] },
+        "duration": { "type": "string", "maxLength": 40 },
+        "durationSeconds": { "type": "number" },
+        "status": { "type": "string", "enum": ["released", "coming_soon", "post_production"] },
+        "isOriginal": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "isVisible": { "type": "boolean" },
+        "sortOrder": { "type": "number" },
+        "synopsisAr": { "type": "string", "maxLength": 4000 },
+        "synopsisEn": { "type": "string", "maxLength": 4000 },
+        "director": { "type": "string", "maxLength": 200 },
+        "producers": { "type": "string", "maxLength": 400 },
+        "cast": { "type": "array" },
+        "posterUrl": { "type": "string", "maxLength": 350000 },
+        "backdropUrl": { "type": "string", "maxLength": 350000 },
+        "stillUrls": { "type": "array" },
+        "trailerUrl": { "type": "string", "maxLength": 4000 },
+        "videoUrl": { "type": "string", "maxLength": 4000 },
+        "videoQualities": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "titleAr", "titleEn", "year", "genre", "status", "isOriginal", "isFeatured", "isVisible", "sortOrder", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered AZ FILMS account profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 320 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "role": { "type": "string", "enum": ["admin", "viewer"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted admin role assignment document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 320 },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "WatchlistItem": {
+      "title": "WatchlistItem",
+      "description": "Saved film in a user's My List",
+      "type": "object",
+      "properties": {
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["filmId", "userId", "addedAt"]
+    },
+    "AnalyticsSession": {
+      "title": "AnalyticsSession",
+      "description": "Anonymous visitor record for unique/returning/active counts",
+      "type": "object",
+      "properties": {
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitCount": { "type": "number" },
+        "firstSeenAt": { "type": "string", "format": "date-time" },
+        "lastActiveAt": { "type": "string", "format": "date-time" },
+        "lastPath": { "type": "string", "maxLength": 200 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["visitorId", "visitCount", "firstSeenAt", "lastActiveAt", "updatedAt"]
+    },
+    "AnalyticsVisit": {
+      "title": "AnalyticsVisit",
+      "description": "Immutable visit event per browser session",
+      "type": "object",
+      "properties": {
+        "visitId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "isReturning": { "type": "boolean" },
+        "dateKey": { "type": "string", "maxLength": 16, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["visitId", "visitorId", "isReturning", "dateKey", "createdAt"]
+    },
+    "AnalyticsView": {
+      "title": "AnalyticsView",
+      "description": "Film playback session recorded only when video playback begins",
+      "type": "object",
+      "properties": {
+        "viewId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "dateKey": { "type": "string", "maxLength": 16, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "watchedSeconds": { "type": "number" },
+        "durationSeconds": { "type": "number" },
+        "completed": { "type": "boolean" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["viewId", "filmId", "visitorId", "dateKey", "watchedSeconds", "completed", "startedAt", "updatedAt"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global platform access mode (open, maintenance, closed), announcement banner, and social link managed by the owner",
+      "type": "object",
+      "properties": {
+        "accessMode": { "type": "string", "enum": ["open", "maintenance", "closed"] },
+        "statusTitleAr": { "type": "string", "maxLength": 140 },
+        "statusTitleEn": { "type": "string", "maxLength": 140 },
+        "statusMessageAr": { "type": "string", "maxLength": 1000 },
+        "statusMessageEn": { "type": "string", "maxLength": 1000 },
+        "announcementEnabled": { "type": "boolean" },
+        "announcementAr": { "type": "string", "maxLength": 240 },
+        "announcementEn": { "type": "string", "maxLength": 240 },
+        "instagramUrl": { "type": "string", "maxLength": 300 },
+        "onlyShowReadyFilms": { "type": "boolean" },
+        "countdownEnabled": { "type": "boolean" },
+        "countdownTargetIso": { "type": "string", "maxLength": 40 },
+        "countdownTitleAr": { "type": "string", "maxLength": 140 },
+        "countdownTitleEn": { "type": "string", "maxLength": 140 },
+        "pollEnabled": { "type": "boolean" },
+        "pollId": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pollQuestionAr": { "type": "string", "maxLength": 180 },
+        "pollQuestionEn": { "type": "string", "maxLength": 180 },
+        "pollOptionAAr": { "type": "string", "maxLength": 120 },
+        "pollOptionAEn": { "type": "string", "maxLength": 120 },
+        "pollOptionBAr": { "type": "string", "maxLength": 120 },
+        "pollOptionBEn": { "type": "string", "maxLength": 120 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "accessMode",
+        "statusTitleAr",
+        "statusTitleEn",
+        "statusMessageAr",
+        "statusMessageEn",
+        "announcementEnabled",
+        "announcementAr",
+        "announcementEn",
+        "updatedAt"
+      ]
+    },
+    "FilmReaction": {
+      "title": "FilmReaction",
+      "description": "Anonymous visitor appreciation like for a cinema work",
+      "type": "object",
+      "properties": {
+        "reactionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reactionId", "filmId", "visitorId", "createdAt"]
+    },
+    "FilmComment": {
+      "title": "FilmComment",
+      "description": "Audience review comment on a cinema work with admin moderation",
+      "type": "object",
+      "properties": {
+        "commentId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["commentId", "filmId", "visitorId", "authorName", "text", "createdAt"]
+    },
+    "PollVote": {
+      "title": "PollVote",
+      "description": "Audience greenlight vote on the next film project",
+      "type": "object",
+      "properties": {
+        "voteId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "pollId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "option": { "type": "string", "enum": ["A", "B"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["voteId", "pollId", "visitorId", "option", "createdAt"]
+    },
+    "FilmPresence": {
+      "title": "FilmPresence",
+      "description": "Live viewer watching presence heartbeat for a film",
+      "type": "object",
+      "properties": {
+        "presenceId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["presenceId", "filmId", "visitorId", "isActive", "updatedAt"]
+    },
+    "FilmPulse": {
+      "title": "FilmPulse",
+      "description": "Timestamped viewer emotional reaction pulse for the Film Heartbeat Graph",
+      "type": "object",
+      "properties": {
+        "pulseId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "kind": { "type": "string", "enum": ["fire", "shock", "heart"] },
+        "timeSec": { "type": "number" },
+        "durationSec": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pulseId", "filmId", "visitorId", "kind", "timeSec", "durationSec", "createdAt"]
+    },
+    "WatchParty": {
+      "title": "WatchParty",
+      "description": "Synchronized screening room for shared film playback",
+      "type": "object",
+      "properties": {
+        "partyId": { "type": "string", "minLength": 4, "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hostVisitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hostName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "isPlaying": { "type": "boolean" },
+        "playbackTime": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["partyId", "filmId", "hostVisitorId", "hostName", "isPlaying", "playbackTime", "isActive", "createdAt", "updatedAt"]
+    },
+    "WatchPartyMessage": {
+      "title": "WatchPartyMessage",
+      "description": "Live screening room message inside a synchronized watch party",
+      "type": "object",
+      "properties": {
+        "messageId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "partyId": { "type": "string", "minLength": 4, "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "filmTimeSec": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["messageId", "partyId", "visitorId", "authorName", "text", "filmTimeSec", "createdAt"]
+    },
+    "SceneNote": {
+      "title": "SceneNote",
+      "description": "Timestamp-pinned director or audience annotation anchored to a specific scene second",
+      "type": "object",
+      "properties": {
+        "noteId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 280 },
+        "timeSec": { "type": "number" },
+        "isDirectorNote": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["noteId", "filmId", "visitorId", "authorName", "text", "timeSec", "isDirectorNote", "createdAt"]
+    },
+    "SeatBooking": {
+      "title": "SeatBooking",
+      "description": "Auditorium seat reservation for a specific cinema screening",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string", "minLength": 3, "maxLength": 140, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filmId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "seatCode": { "type": "string", "minLength": 2, "maxLength": 4, "pattern": "^[A-E](?:[1-9]|10)$" },
+        "tier": { "type": "string", "enum": ["front", "sweet_spot", "vip"] },
+        "visitorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "viewerName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookingId", "filmId", "seatCode", "tier", "visitorId", "viewerName", "createdAt"]
+    },
+    "AzTechOrder": {
+      "title": "AzTechOrder",
+      "description": "Admin-only AZ Technical Center instant maintenance & link update execution log",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actionType": { "type": "string", "enum": ["link_update", "batch_repair", "maintenance_mode", "cache_sync"] },
+        "targetFilmId": { "type": "string", "maxLength": 128 },
+        "requestNote": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "resolutionNote": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "status": { "type": "string", "enum": ["resolved", "warning"] },
+        "checkedLinks": { "type": "number" },
+        "updatedLinks": { "type": "number" },
+        "latencyMs": { "type": "number" },
+        "createdByEmail": { "type": "string", "minLength": 3, "maxLength": 320 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "orderId",
+        "actionType",
+        "requestNote",
+        "resolutionNote",
+        "status",
+        "checkedLinks",
+        "updatedLinks",
+        "latencyMs",
+        "createdByEmail",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/films/{filmId}": {
+      "schema": { "$ref": "#/entities/Film" },
+      "description": "Cinema catalog entries managed by admins"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account documents with RBAC role"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted admin UID registry"
+    },
+    "/users/{userId}/watchlist/{filmId}": {
+      "schema": { "$ref": "#/entities/WatchlistItem" },
+      "description": "Personal My List items saved by each user"
+    },
+    "/analytics_sessions/{visitorId}": {
+      "schema": { "$ref": "#/entities/AnalyticsSession" },
+      "description": "Anonymous visitor state for unique, repeat, and active counts"
+    },
+    "/analytics_visits/{visitId}": {
+      "schema": { "$ref": "#/entities/AnalyticsVisit" },
+      "description": "Deduplicated platform visit events"
+    },
+    "/analytics_views/{viewId}": {
+      "schema": { "$ref": "#/entities/AnalyticsView" },
+      "description": "Deduplicated film playback and completion events"
+    },
+    "/site_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Platform access control and announcement state"
+    },
+    "/film_reactions/{reactionId}": {
+      "schema": { "$ref": "#/entities/FilmReaction" },
+      "description": "Visitor likes per film"
+    },
+    "/film_comments/{commentId}": {
+      "schema": { "$ref": "#/entities/FilmComment" },
+      "description": "Audience review comments per film moderated by owner"
+    },
+    "/poll_votes/{voteId}": {
+      "schema": { "$ref": "#/entities/PollVote" },
+      "description": "Visitor votes for the upcoming film audience poll"
+    },
+    "/film_presence/{presenceId}": {
+      "schema": { "$ref": "#/entities/FilmPresence" },
+      "description": "Active viewer presence heartbeats per film"
+    },
+    "/film_pulses/{pulseId}": {
+      "schema": { "$ref": "#/entities/FilmPulse" },
+      "description": "Timestamped emotional pulses for film heartbeat waveform"
+    },
+    "/watch_parties/{partyId}": {
+      "schema": { "$ref": "#/entities/WatchParty" },
+      "description": "Synchronized Watch Party screening rooms keyed by room code"
+    },
+    "/watch_parties/{partyId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/WatchPartyMessage" },
+      "description": "Real-time messages inside a Watch Party room"
+    },
+    "/scene_notes/{noteId}": {
+      "schema": { "$ref": "#/entities/SceneNote" },
+      "description": "Timestamp-pinned director and viewer annotations on film scenes"
+    },
+    "/seat_bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/SeatBooking" },
+      "description": "Persistent auditorium seat reservations keyed by filmId__seatCode to prevent double-booking"
+    },
+    "/az_tech_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/AzTechOrder" },
+      "description": "Admin-only AZ Technical Center maintenance and instant link-update commands"
+    }
+  }
+}
